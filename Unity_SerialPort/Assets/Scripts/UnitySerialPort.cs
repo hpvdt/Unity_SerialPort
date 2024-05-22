@@ -731,11 +731,11 @@ public class UnitySerialPort : MonoBehaviour
                     // into a string array
                     ChunkData = RawData.Split(Separator);
                     
-                    // for (int i = 0; i < ChunkData.Length; i++)
-                    // {
-                    //     Debug.Log(ChunkData[i] + " ");
-                    // }
-                    // Debug.Log("\n");
+                    for (int i = 0; i < ChunkData.Length; i++)
+                    {
+                        Debug.Log(ChunkData[i] + " ");
+                    }
+                    Debug.Log("\n");
 
                     // Or you could call a function to do something with
                     // data e.g.
