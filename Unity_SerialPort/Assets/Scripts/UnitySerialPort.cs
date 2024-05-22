@@ -30,6 +30,8 @@ using System;
 using System.Threading;
 
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 // new Text Mesh Pro text
 using TMPro;
@@ -454,6 +456,8 @@ public class UnitySerialPort : MonoBehaviour
     {
         try
         {
+            var all = GetPortNames();
+            
             // Initialise the serial port
             SerialPort = new SerialPort(ComPort, BaudRate, Parity, DataBits, StopBits);
 
@@ -581,7 +585,7 @@ public class UnitySerialPort : MonoBehaviour
             GenericSerialLoop();
         }
 
-      portStatus = "Ending Serial Thread!";
+        portStatus = "Ending Serial Thread!";
 
         if (ShowDebugs)
             ShowDebugMessages(portStatus);
@@ -649,7 +653,7 @@ public class UnitySerialPort : MonoBehaviour
             yield return null;
         }
 
-       portStatus = "Ending Coroutine!";
+        portStatus = "Ending Coroutine!";
 
         if (ShowDebugs)
             ShowDebugMessages(portStatus);
@@ -720,11 +724,18 @@ public class UnitySerialPort : MonoBehaviour
                 // If the data is valid then do something with it
                 if (rData != null && rData != "")
                 {
+                    
                     // Store the raw data
                     RawData = rData;
                     // split the raw data into chunks via ',' and store it
                     // into a string array
                     ChunkData = RawData.Split(Separator);
+                    
+                    // for (int i = 0; i < ChunkData.Length; i++)
+                    // {
+                    //     Debug.Log(ChunkData[i] + " ");
+                    // }
+                    // Debug.Log("\n");
 
                     // Or you could call a function to do something with
                     // data e.g.
@@ -893,4 +904,124 @@ public class UnitySerialPort : MonoBehaviour
     }
 
     #endregion Methods
+    
+    private static readonly object locker = new object();
+    
+    public new static string[] GetPortNames()
+    {
+        // prevent hammering
+        lock (locker)
+        {
+            var allPorts = new List<string>();
+
+            if (Directory.Exists("/dev/"))
+            {
+                // cleanup now
+                GC.Collect();
+                // mono is failing in here on linux "too many open files"
+                try
+                {
+                    if (Directory.Exists("/dev/serial/by-id/"))
+                        allPorts.AddRange(Directory.GetFiles("/dev/serial/by-id/", "*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "ttyACM*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "ttyUSB*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "rfcomm*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "*usb*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "tty.*"));
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    allPorts.AddRange(Directory.GetFiles("/dev/", "cu.*"));
+                }
+                catch
+                {
+                }
+            }
+
+            string[] ports = null;
+
+            try
+            {
+                ports = System.IO.Ports.SerialPort.GetPortNames();
+                // any exceptions will still result in a list
+                ports = ports.Select(p => p?.TrimEnd()).ToArray();
+                ports = ports.Select(FixBlueToothPortNameBug).ToArray();
+            }
+            catch
+            {
+            }
+
+            if (ports != null)
+                allPorts.AddRange(ports);
+
+            // if (GetCustomPorts != null)
+            // {
+            //     try
+            //     {
+            //         allPorts.AddRange(GetCustomPorts.Invoke());
+            //     }
+            //     catch
+            //     {
+            //     }
+            // }
+
+            return allPorts.Distinct().ToArray();
+        }
+    }
+    
+    private static string FixBlueToothPortNameBug(string portName)
+    {
+        if (portName == null)
+            return null;
+        if (!portName.StartsWith("COM"))
+            return portName;
+        var newPortName = "COM"; // Start over with "COM"
+        foreach (var portChar in portName.Substring(3).Take(3)
+                ) //  Remove "COM", put the rest in a character array
+            if (char.IsDigit(portChar))
+                newPortName += portChar.ToString(); // Good character, append to portName
+        //  else
+        //log.WarnFormat("Bad (Non Numeric) character in port name '{0}' - removing", portName);
+
+        return newPortName;
+    }
 }
