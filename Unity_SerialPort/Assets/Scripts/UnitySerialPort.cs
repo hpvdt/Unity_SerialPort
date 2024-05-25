@@ -54,7 +54,7 @@ public class UnitySerialPort : MonoBehaviour
     [Header("SerialPort")]
 
     // Current com port and set of default
-    public string ComPort = "COM5";
+    public string ComPort = "COM6";
 
     // Current baud rate and set of default
     // 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200
