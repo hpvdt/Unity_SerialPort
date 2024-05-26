@@ -5,15 +5,17 @@ using UnityEngine;
 
 public class SerialPortReader : MonoBehaviour
 {
-    public string portName = "/dev/ttyUSB0";  
-    public int baudRate = 9600;       
+    // Serial port settings
+    public string portName = "/dev/tty.usbserial-1120";  
+    public int baudRate = 115200;           
 
     private SerialPort serialPort;
     private Thread readThread;
     private bool isRunning;
 
     // Buffer to store received data
-    private string receivedData = string.Empty;
+    private byte[] buffer = new byte[4]; // A float is 4 bytes
+    private float receivedFloat = 0.0f;
 
     void Start()
     {
@@ -38,10 +40,11 @@ public class SerialPortReader : MonoBehaviour
 
     void Update()
     {
-        if (!string.IsNullOrEmpty(receivedData))
+        // Use the received data
+        if (receivedFloat != 0.0f)
         {
-            Debug.Log($"Received Data: {receivedData}");
-            receivedData = string.Empty;  
+            Debug.Log($"Received Float: {receivedFloat}");
+            receivedFloat = 0.0f;  // Reset the received value after processing
         }
     }
 
@@ -51,15 +54,15 @@ public class SerialPortReader : MonoBehaviour
         {
             try
             {
-                string data = serialPort.ReadLine();
-                if (!string.IsNullOrEmpty(data))
+                int bytesRead = serialPort.Read(buffer, 0, 4);
+                if (bytesRead == 4)
                 {
-                    receivedData = data;
+                    receivedFloat = BitConverter.ToSingle(buffer, 0);
                 }
             }
             catch (TimeoutException)
             {
-                
+                // Handle the timeout exception if needed
             }
             catch (Exception e)
             {
@@ -70,6 +73,7 @@ public class SerialPortReader : MonoBehaviour
 
     void OnApplicationQuit()
     {
+        // Clean up the serial port
         isRunning = false;
         if (readThread != null && readThread.IsAlive)
         {
